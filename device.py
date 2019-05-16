@@ -233,18 +233,15 @@ def main():
     client.subscribe(mqtt_config_topic, qos=1)
 
     # Update and publish temperature readings at a rate of one per second.
-    for _ in range(args.num_messages):
-        # In an actual device, this would read the device's sensors. Here,
-        # you update the temperature based on whether the fan is on.
-        device.update_sensor_data()
+    images_file = open("images.txt")
 
-        # Report the device's temperature to the server by serializing it
-        # as a JSON string.
-        payload = json.dumps({'temperature': device.temperature})
-        print('Publishing payload', payload)
+    for line in images_file.readlines():
+        payload = json.dumps({'image_name': line, 'bucket_name':'stockimages'})
+        print('Publishing payload for image {}'.format(line))
         client.publish(mqtt_telemetry_topic, payload, qos=1)
-        # Send events every second.
-        time.sleep(1)
+
+        time.sleep(10)
+
 
     client.disconnect()
     client.loop_stop()
