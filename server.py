@@ -35,7 +35,6 @@ import os
 import sys
 from threading import Lock
 import time
-import requests
 
 from google.cloud import pubsub
 from googleapiclient import discovery
@@ -76,27 +75,10 @@ class Server(object):
         #     api-client-library/python/guide/thread_safety
         self._update_config_mutex = Lock()
 
-
-    def communicate_with_rekognition_server(data):
-    	url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
-    	bucket_name = data['bucket_name']
-    	image_name = data['image_name']
-    	payload = {'bucket_name': bucket_name, 'image_name': image_name}
-    	response = requests.get(url, params=payload)
-
-    	json_response = json.loads(response.text)
-
-    	print("Received response from image recog server for image {}".image_name)
-    	for tup in json_response:
-    		# if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
-    		if tup['Confidence'] > 90:
-    			print(tup['Name'])
-    			#publish onto a different channel
-    			# print("Intruder detected")
-
-
-
-
+    def _update_device_config(self, project_id, region, registry_id, device_id,
+                              data):
+        """Push the data to the given device as configuration."""
+        print("Inside server")
 
     def run(self, project_id, pubsub_subscription):
         """The main loop. Consumes messages from the
@@ -129,7 +111,12 @@ class Server(object):
             device_region = message.attributes['deviceRegistryLocation']
 
             # Send the config to the device.
-            self.communicate_with_rekognition_server(data)
+            self._update_device_config(
+              device_project_id,
+              device_region,
+              device_registry_id,
+              device_id,
+              data)
 
             # Acknowledge the consumed message. This will ensure that they
             # are not redelivered to this subscription.
@@ -178,3 +165,20 @@ def main():
 
 if __name__ == '__main__':
 	main()
+
+	# def communicate_with_rekognition_server(data):
+ #    	url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
+ #    	bucket_name = data['bucket_name']
+ #    	image_name = data['image_name']
+ #    	payload = {'bucket_name': bucket_name, 'image_name': image_name}
+ #    	response = requests.get(url, params=payload)
+
+ #    	json_response = json.loads(response.text)
+
+ #    	print("Received response from image recog server for image {}".image_name)
+ #    	for tup in json_response:
+ #    		# if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
+ #    		if tup['Confidence'] > 90:
+ #    			print(tup['Name'])
+ #    			#publish onto a different channel
+ #    			# print("Intruder detected")
