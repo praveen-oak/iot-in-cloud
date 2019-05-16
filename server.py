@@ -86,10 +86,13 @@ class Server(object):
 
     	json_response = json.loads(response.text)
 
+    	print("Received response from image recog server for image {}".image_name)
     	for tup in json_response:
-    		if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
+    		# if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
+    		if tup['Confidence'] > 90:
+    			print(tup['Name'])
     			#publish onto a different channel
-    			print("Intruder detected")
+    			# print("Intruder detected")
 
 
 
