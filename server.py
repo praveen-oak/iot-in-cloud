@@ -98,12 +98,12 @@ class Server(object):
         """The main loop. Consumes messages from the
         Pub/Sub subscription.
         """
-
+        print("Configuring subscription")
         subscriber = pubsub.SubscriberClient()
         subscription_path = subscriber.subscription_path(
                               project_id,
                               pubsub_subscription)
-
+        print("Subscribed and wating for message")
         def callback(message):
             """Logic executed when a message is received from
             subscribed topic.
@@ -172,27 +172,10 @@ def parse_command_line_args():
 
 def main():
     args = parse_command_line_args()
-
+    print("Starting server")
     server = Server(args.service_account_json)
     server.run(args.project_id, args.pubsub_subscription)
 
 
 if __name__ == '__main__':
 	main()
-
-	# def communicate_with_rekognition_server(data):
- #    	url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
- #    	bucket_name = data['bucket_name']
- #    	image_name = data['image_name']
- #    	payload = {'bucket_name': bucket_name, 'image_name': image_name}
- #    	response = requests.get(url, params=payload)
-
- #    	json_response = json.loads(response.text)
-
- #    	print("Received response from image recog server for image {}".image_name)
- #    	for tup in json_response:
- #    		# if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
- #    		if tup['Confidence'] > 90:
- #    			print(tup['Name'])
- #    			#publish onto a different channel
- #    			# print("Intruder detected")
