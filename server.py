@@ -75,10 +75,24 @@ class Server(object):
         #     api-client-library/python/guide/thread_safety
         self._update_config_mutex = Lock()
 
-    def _update_device_config(self, project_id, region, registry_id, device_id,
+    def communicate_with_rekognition_server(self, project_id, region, registry_id, device_id,
                               data):
-        """Push the data to the given device as configuration."""
-        print("Inside server")
+        url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
+        bucket_name = data['bucket_name']
+        image_name = data['image_name']
+        payload = {'bucket_name': bucket_name, 'image_name': image_name}
+        response = requests.get(url, params=payload)
+
+        json_response = json.loads(response.text)
+
+        print("Received response from image recog server for image {}".image_name)
+        for tup in json_response:
+          # if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
+          if tup['Confidence'] > 90:
+              print(tup['Name'])
+              #publish onto a different channel
+              # print("Intruder detected")
+
 
     def run(self, project_id, pubsub_subscription):
         """The main loop. Consumes messages from the
@@ -111,7 +125,7 @@ class Server(object):
             device_region = message.attributes['deviceRegistryLocation']
 
             # Send the config to the device.
-            self._update_device_config(
+            self.communicate_with_rekognition_server(
               device_project_id,
               device_region,
               device_registry_id,
