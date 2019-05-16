@@ -35,6 +35,7 @@ import os
 import sys
 from threading import Lock
 import time
+import requests
 
 from google.cloud import pubsub
 from googleapiclient import discovery
@@ -75,61 +76,24 @@ class Server(object):
         #     api-client-library/python/guide/thread_safety
         self._update_config_mutex = Lock()
 
-    def _update_device_config(self, project_id, region, registry_id, device_id,
-                              data):
-        """Push the data to the given device as configuration."""
-        config_data = None
-        print('The device ({}) has a temperature '
-              'of: {}'.format(device_id, data['temperature']))
-        if data['temperature'] < 0:
-            # Turn off the fan.
-            config_data = {'fan_on': False}
-            print('Setting fan state for device', device_id, 'to off.')
-        elif data['temperature'] > 10:
-            # Turn on the fan
-            config_data = {'fan_on': True}
-            print('Setting fan state for device', device_id, 'to on.')
-        else:
-            # Temperature is OK, don't need to push a new config.
-            return
 
-        config_data_json = json.dumps(config_data)
-        body = {
-            # The device configuration specifies a version to update, which
-            # can be used to avoid having configuration updates race. In this
-            # case, you use the special value of 0, which tells Cloud IoT to
-            # always update the config.
-            'version_to_update': 0,
-            # The data is passed as raw bytes, so you encode it as base64.
-            # Note that the device will receive the decoded string, so you
-            # do not need to base64 decode the string on the device.
-            'binary_data': base64.b64encode(
-                    config_data_json.encode('utf-8')).decode('ascii')
-        }
+    def communicate_with_rekognition_server(data):
+    	url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
+    	bucket_name = data['bucket_name']
+    	image_name = data['image_name']
+    	payload = {'bucket_name': bucket_name, 'image_name': image_name}
+    	response = requests.get(url, params=payload)
 
-        device_name = ('projects/{}/locations/{}/registries/{}/'
-                       'devices/{}'.format(
-                           project_id,
-                           region,
-                           registry_id,
-                           device_id))
+    	json_response = json.loads(response.text)
 
-        request = self._service.projects().locations().registries().devices(
-        ).modifyCloudToDeviceConfig(name=device_name, body=body)
+    	for tup in json_response:
+    		if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
+    			#publish onto a different channel
+    			print("Intruder detected")
 
-        # The http call for the device config change is thread-locked so
-        # that there aren't competing threads simultaneously using the
-        # httplib2 library, which is not thread-safe.
-        self._update_config_mutex.acquire()
-        try:
-            request.execute()
-        except HttpError as e:
-            # If the server responds with a HtppError, log it here, but
-            # continue so that the message does not stay NACK'ed on the
-            # pubsub channel.
-            print('Error executing ModifyCloudToDeviceConfig: {}'.format(e))
-        finally:
-            self._update_config_mutex.release()
+
+
+
 
     def run(self, project_id, pubsub_subscription):
         """The main loop. Consumes messages from the
@@ -162,12 +126,7 @@ class Server(object):
             device_region = message.attributes['deviceRegistryLocation']
 
             # Send the config to the device.
-            self._update_device_config(
-              device_project_id,
-              device_region,
-              device_registry_id,
-              device_id,
-              data)
+            self.communicate_with_rekognition_server(data)
 
             # Acknowledge the consumed message. This will ensure that they
             # are not redelivered to this subscription.

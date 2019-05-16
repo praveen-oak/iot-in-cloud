@@ -1,3 +1,7 @@
 rsa_private.pem
 rsa_public.pem
 service_account.json
+.DS_Store
+cifar.tgz
+cifar/
+
