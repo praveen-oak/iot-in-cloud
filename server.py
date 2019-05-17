@@ -35,6 +35,7 @@ import os
 import sys
 from threading import Lock
 import time
+import requests
 
 from google.cloud import pubsub
 from googleapiclient import discovery
@@ -69,25 +70,35 @@ class Server(object):
 
     def _update_device_config(self, project_id, region, registry_id, device_id,
                               data):
+        print("Inside update device")
         url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
-        bucket_name = data['bucket_name']
-        image_name = data['image_name']
-
+        bucket_name = data['bucket_name'].strip()
+        image_name = data['image_name'].strip()
+        
+        print("Processing image {} from camera {}".format(image_name, device_id))
         if not bucket_name or not image_name:
             print("Image and bucket not specified in the message")
             return
         payload = {'bucket_name': bucket_name, 'image_name': image_name}
-        response = requests.get(url, params=payload)
-
+        try:
+            response = requests.get(url, params=payload)
+            print(response.text)
+        except Exception as inst:
+            print(inst)
         json_response = json.loads(response.text)
-
-        print("Received response from image recog server for image {}".image_name)
+        
+        to_print = False
         for tup in json_response:
-          # if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
-          if tup['Confidence'] > 90:
-              print(tup['Name'])
-              #publish onto a different channel
-              # print("Intruder detected")
+          if tup['Name'] == 'Vehicle' and tup['Confidence'] > 95:
+              print("Detected a vehicle on camera {}, printing the details".format(device_id))
+              to_print = True
+
+        if to_print:
+            print("Following items were detected by camera {}".format(device_id))
+            for tup in json_response:
+                if tup['Confidence'] > 90:
+                    print(tup['Name'])
+              
 
     def run(self, project_id, pubsub_subscription):
         """The main loop. Consumes messages from the
@@ -98,7 +109,7 @@ class Server(object):
         subscription_path = subscriber.subscription_path(
                               project_id,
                               pubsub_subscription)
-
+        print("Done with everything, waiting for messages")
         def callback(message):
             """Logic executed when a message is received from
             subscribed topic.
@@ -110,7 +121,6 @@ class Server(object):
                     message.data, e))
                 message.ack()
                 return
-
             # Get the registry id and device id from the attributes. These are
             # automatically supplied by IoT, and allow the server to determine
             # which device sent the event.
@@ -118,7 +128,6 @@ class Server(object):
             device_registry_id = message.attributes['deviceRegistryId']
             device_id = message.attributes['deviceId']
             device_region = message.attributes['deviceRegistryLocation']
-
             # Send the config to the device.
             self._update_device_config(
               device_project_id,
@@ -126,10 +135,10 @@ class Server(object):
               device_registry_id,
               device_id,
               data)
-
             # Acknowledge the consumed message. This will ensure that they
             # are not redelivered to this subscription.
             message.ack()
+            print("Acked the message, "+str(message.data))
 
         print('Listening for messages on {}'.format(subscription_path))
         subscriber.subscribe(subscription_path, callback=callback)
