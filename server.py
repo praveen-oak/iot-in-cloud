@@ -69,7 +69,7 @@ class Server(object):
 
     def _update_device_config(self, project_id, region, registry_id, device_id,
                               data):
-       url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
+        url = 'https://i6oeux6ea4.execute-api.us-east-1.amazonaws.com/prod/recognize-image'
         bucket_name = data['bucket_name']
         image_name = data['image_name']
 
