@@ -234,13 +234,17 @@ def main():
 
     # Update and publish temperature readings at a rate of one per second.
     images_file = open("images.txt")
-
+    
+    i = 0
     for line in images_file.readlines():
+        i = i + 1
+        if i > 15:
+            break
         payload = json.dumps({'image_name': line, 'bucket_name':'stockimages'})
         print('Publishing payload for image {}'.format(line))
         client.publish(mqtt_telemetry_topic, payload, qos=1)
 
-        time.sleep(10)
+        time.sleep(1)
 
 
     client.disconnect()
